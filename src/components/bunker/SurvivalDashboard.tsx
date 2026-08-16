@@ -9,7 +9,7 @@ const color: Record<Status, string> = {
   crit: "var(--status-crit)",
 };
 
-function Gauge({ label, value, large }: { label: string; value: number; large?: boolean }) {
+function Gauge({ label, value, large }: { label: string; value: number; large?: boolean | undefined }) {
   const st = statusOf(value);
   const r = 20;
   const c = Math.PI * r; // half circle length
