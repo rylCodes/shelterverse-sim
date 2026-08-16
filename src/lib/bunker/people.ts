@@ -23,9 +23,10 @@ export function peopleFor(scenario: ScenarioId, population: number): Person[] {
   const floors = sc.safeFloors;
   const people: Person[] = [];
   for (let i = 0; i < population; i++) {
-    const floor = floors[i % floors.length];
+    const floor = floors[i % floors.length]!;
     const rooms = roomsByFloor(floor);
-    const room = rooms[Math.floor(rand(i * 3 + floor) * rooms.length)];
+    const room = rooms[Math.floor(rand(i * 3 + floor) * rooms.length)]!;
+
     const rect = roomRect(room.id);
     const x = rect.x + 8 + rand(i * 7 + floor) * Math.max(6, rect.w - 16);
     people.push({
