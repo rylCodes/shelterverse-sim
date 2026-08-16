@@ -1,0 +1,86 @@
+import type { FloorDef } from "./types";
+
+export const FLOORS: FloorDef[] = [
+  {
+    id: 1,
+    code: "F01",
+    name: "Entry & Decontamination",
+    short: "ENTRY",
+    tagline: "Safe transition between the surface and the protected community.",
+    accent: "people",
+  },
+  {
+    id: 2,
+    code: "F02",
+    name: "Security & Emergency Control",
+    short: "SECURITY",
+    tagline: "Access control, alarms, monitoring and emergency communications.",
+    accent: "comms",
+  },
+  {
+    id: 3,
+    code: "F03",
+    name: "Water, Air & Technology",
+    short: "LIFE SUPPORT",
+    tagline: "The technical heart: water, air, network and fire protection.",
+    accent: "water",
+  },
+  {
+    id: 4,
+    code: "F04",
+    name: "Medical & Healthcare",
+    short: "MEDICAL",
+    tagline: "Care, isolation, pharmacy and well-being support.",
+    accent: "medical",
+  },
+  {
+    id: 5,
+    code: "F05",
+    name: "Food Production & Storage",
+    short: "FOOD",
+    tagline: "Growing, raising and storing food using recycled water.",
+    accent: "food",
+  },
+  {
+    id: 6,
+    code: "F06",
+    name: "Residential A",
+    short: "RESIDENTIAL",
+    tagline: "Private quarters and shared living support for residents.",
+    accent: "people",
+  },
+  {
+    id: 7,
+    code: "F07",
+    name: "Residential B",
+    short: "RESIDENTIAL",
+    tagline: "Second residential block with the same shared services.",
+    accent: "people",
+  },
+  {
+    id: 8,
+    code: "F08",
+    name: "Community & Well-being",
+    short: "COMMUNITY",
+    tagline: "Eating, moving, playing, praying and being together.",
+    accent: "food",
+  },
+  {
+    id: 9,
+    code: "F09",
+    name: "Education & Development",
+    short: "EDUCATION",
+    tagline: "Learning, making and planning for life after the emergency.",
+    accent: "comms",
+  },
+  {
+    id: 10,
+    code: "F10",
+    name: "Waste & Backup Systems",
+    short: "WASTE",
+    tagline: "Closing the loop: drainage, treatment, recycling, backup power.",
+    accent: "waste",
+  },
+];
+
+export const floorById = (id: number) => FLOORS.find((f) => f.id === id)!;
