@@ -55,8 +55,11 @@ function Index() {
     <div className="min-h-screen bg-background text-foreground">
       <header className="border-b border-border bg-card/40">
         <div className="mx-auto flex max-w-[1800px] flex-wrap items-center gap-3 px-4 py-3">
+          <img className="w-12 h-auto" src="/bnb-logo.png" alt="" />
           <div className="mr-auto">
-            <h1 className={`font-mono uppercase tracking-[0.28em] text-foreground ${presenting ? "text-xl" : "text-base"}`}>
+            <h1
+              className={`font-mono uppercase tracking-[0.28em] text-foreground ${presenting ? "text-xl" : "text-base"}`}
+            >
               BSB <span className="text-primary">— Beyond Safe Boundaries</span>
             </h1>
             <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
@@ -81,7 +84,9 @@ function Index() {
       </header>
 
       <main className="mx-auto max-w-[1800px] px-4 py-4">
-        <div className={`grid gap-4 ${presenting ? "lg:grid-cols-[110px_1fr_260px]" : "lg:grid-cols-[190px_1fr_330px]"}`}>
+        <div
+          className={`grid gap-4 ${presenting ? "lg:grid-cols-[110px_1fr_260px]" : "lg:grid-cols-[190px_1fr_330px]"}`}
+        >
           <div className="order-2 lg:order-1">
             <FloorNavigator
               selected={state.selectedFloor}
@@ -133,7 +138,12 @@ function Index() {
 
           <div className="order-3 flex flex-col gap-3">
             <SurvivalDashboard state={state} large={presenting} />
-            {!presenting && <RoomInfoPanel state={state} onClose={() => dispatch({ type: "selectRoom", room: null })} />}
+            {!presenting && (
+              <RoomInfoPanel
+                state={state}
+                onClose={() => dispatch({ type: "selectRoom", room: null })}
+              />
+            )}
             {!presenting && <EventLog events={state.events} className="max-h-72" />}
           </div>
         </div>
@@ -156,8 +166,9 @@ function Index() {
                 Educational framing
               </h2>
               <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
-                Conceptual educational model. Simulation values and facility layouts are illustrative
-                and are not engineering, medical, architectural, security, or construction guidance.
+                Conceptual educational model. Simulation values and facility layouts are
+                illustrative and are not engineering, medical, architectural, security, or
+                construction guidance.
               </p>
             </div>
           </section>
