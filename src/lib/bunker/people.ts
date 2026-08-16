@@ -31,10 +31,10 @@ export function peopleFor(scenario: ScenarioId, population: number): Person[] {
     const x = rect.x + 8 + rand(i * 7 + floor) * Math.max(6, rect.w - 16);
     people.push({
       id: i,
-      x,
+      x: Math.round(x * 100) / 100,
       y: floorY(floor) + FLOOR_H - 16,
       floor,
-      delay: rand(i * 11) * 4,
+      delay: Math.round(rand(i * 11) * 400) / 100,
       child: i % 5 === 3,
     });
   }
