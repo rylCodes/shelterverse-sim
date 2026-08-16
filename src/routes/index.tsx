@@ -55,16 +55,18 @@ function Index() {
     <div className="min-h-screen bg-background text-foreground">
       <header className="border-b border-border bg-card/40">
         <div className="mx-auto flex max-w-[1800px] flex-wrap items-center gap-3 px-4 py-3">
-          <img className="w-12 h-auto" src="/bnb-logo.png" alt="" />
-          <div className="mr-auto">
-            <h1
-              className={`font-mono uppercase tracking-[0.28em] text-foreground ${presenting ? "text-xl" : "text-base"}`}
-            >
-              BSB <span className="text-primary">— Beyond Safe Boundaries</span>
-            </h1>
-            <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
-              Interactive 10-floor underground emergency community
-            </p>
+          <div className="flex items-center gap-3 mr-auto">
+            <img className="w-12 h-auto" src="/bnb-logo.png" alt="" />
+            <div className="mr-auto">
+              <h1
+                className={`font-mono uppercase tracking-[0.28em] text-foreground ${presenting ? "text-xl" : "text-base"}`}
+              >
+                BSB <span className="text-primary">— Beyond Safe Boundaries</span>
+              </h1>
+              <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
+                Interactive 10-floor underground emergency community
+              </p>
+            </div>
           </div>
           <button
             onClick={() => dispatch({ type: "demoStep", step: demo === null ? 0 : null })}
@@ -96,7 +98,7 @@ function Index() {
           </div>
 
           <div className="order-1 flex flex-col gap-3 lg:order-2">
-            <div className={presenting ? "h-[78vh]" : "h-[68vh] min-h-[480px]"}>
+            <div className={presenting ? "h-[80vh]" : "h-[70vh] min-h-125"}>
               <BunkerVisualization
                 state={state}
                 onSelectRoom={(room) => dispatch({ type: "selectRoom", room })}
