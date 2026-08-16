@@ -58,9 +58,7 @@ function Index() {
           <div className="flex items-center gap-3 mr-auto">
             <img className="w-12 h-auto" src="/bnb-logo.png" alt="" />
             <div className="mr-auto">
-              <h1
-                className={`font-mono uppercase tracking-[0.28em] text-foreground ${presenting ? "text-xl" : "text-base"}`}
-              >
+              <h1 className={`font-mono uppercase tracking-[0.28em] text-foreground`}>
                 BSB <span className="text-primary">— Beyond Safe Boundaries</span>
               </h1>
               <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
@@ -80,7 +78,13 @@ function Index() {
             className="rounded border border-border bg-card/60 px-3 py-1.5 font-mono text-[10px] uppercase tracking-[0.14em]"
           >
             <Maximize2 className="mr-1 inline h-3 w-3" />
-            {presenting ? "Exit presentation (ESC)" : "Presentation mode"}
+            {presenting ? (
+              <>
+                Exit presentation <span className="hidden sm:inline">(ESC)</span>
+              </>
+            ) : (
+              "Presentation mode"
+            )}
           </button>
         </div>
       </header>
