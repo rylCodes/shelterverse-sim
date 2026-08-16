@@ -1,6 +1,6 @@
 import { useEffect } from "react";
 import { ChevronLeft, ChevronRight, X } from "lucide-react";
-import type { Action, SimState } from "@/lib/bunker/types";
+import type { SimState } from "@/lib/bunker/types";
 import type { Action as SimAction } from "@/lib/bunker/simulation";
 
 export interface DemoStep {
@@ -154,5 +154,3 @@ export function GuidedDemo({ step, dispatch, onExit, onStep }: Props) {
     </div>
   );
 }
-
-export type { Action };
