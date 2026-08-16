@@ -1,4 +1,9 @@
-import { RESOURCE_META, statusOf, sustainabilityDays, activeCascades } from "@/lib/bunker/simulation";
+import {
+  RESOURCE_META,
+  statusOf,
+  sustainabilityDays,
+  activeCascades,
+} from "@/lib/bunker/simulation";
 import { POPULATION_BREAKDOWN } from "@/lib/bunker/systems";
 import type { SimState, Status } from "@/lib/bunker/types";
 import { AlertTriangle, Users } from "lucide-react";
@@ -9,7 +14,15 @@ const color: Record<Status, string> = {
   crit: "var(--status-crit)",
 };
 
-function Gauge({ label, value, large }: { label: string; value: number; large?: boolean | undefined }) {
+function Gauge({
+  label,
+  value,
+  large,
+}: {
+  label: string;
+  value: number;
+  large?: boolean | undefined;
+}) {
   const st = statusOf(value);
   const r = 20;
   const c = Math.PI * r; // half circle length
@@ -17,7 +30,13 @@ function Gauge({ label, value, large }: { label: string; value: number; large?: 
   return (
     <div className="flex items-center gap-2.5 rounded border border-border bg-card/60 px-2.5 py-2">
       <svg width={48} height={28} viewBox="0 0 48 28" aria-hidden>
-        <path d="M 4 25 A 20 20 0 0 1 44 25" fill="none" stroke="var(--concrete-light)" strokeWidth={5} strokeLinecap="round" />
+        <path
+          d="M 4 25 A 20 20 0 0 1 44 25"
+          fill="none"
+          stroke="var(--concrete-light)"
+          strokeWidth={5}
+          strokeLinecap="round"
+        />
         <path
           d="M 4 25 A 20 20 0 0 1 44 25"
           fill="none"
@@ -30,10 +49,15 @@ function Gauge({ label, value, large }: { label: string; value: number; large?: 
         />
       </svg>
       <div className="min-w-0 flex-1">
-        <p className={`font-mono uppercase tracking-[0.16em] text-muted-foreground ${large ? "text-[11px]" : "text-[9px]"}`}>
+        <p
+          className={`font-mono uppercase tracking-[0.16em] text-muted-foreground text-[10px] line-clamp-1`}
+        >
           {label}
         </p>
-        <p className={`font-mono tabular-nums ${large ? "text-xl" : "text-sm"}`} style={{ color: color[st] }}>
+        <p
+          className={`font-mono tabular-nums ${large ? "text-xl" : "text-sm"}`}
+          style={{ color: color[st] }}
+        >
           {Math.round(value)}%
         </p>
       </div>
@@ -56,7 +80,9 @@ export function SurvivalDashboard({ state, large }: { state: SimState; large?: b
         </span>
       </div>
 
-      <div className={`grid gap-1.5 ${large ? "grid-cols-2" : "grid-cols-1 sm:grid-cols-2 xl:grid-cols-1"}`}>
+      <div
+        className={`grid gap-1.5 ${large ? "grid-cols-2" : "grid-cols-1 sm:grid-cols-2 xl:grid-cols-1"}`}
+      >
         {RESOURCE_META.map((m) => (
           <Gauge key={m.key} label={m.label} value={state.resources[m.key]} large={large} />
         ))}

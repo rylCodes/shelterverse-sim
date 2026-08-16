@@ -87,7 +87,7 @@ function Index() {
 
       <main className="mx-auto max-w-[1800px] px-4 py-4">
         <div
-          className={`grid gap-4 ${presenting ? "lg:grid-cols-[110px_1fr_260px]" : "lg:grid-cols-[190px_1fr_330px]"}`}
+          className={`grid gap-4 ${presenting ? "lg:grid-cols-[110px_1fr_290px]" : "lg:grid-cols-[190px_1fr_330px]"}`}
         >
           <div className="order-2 lg:order-1">
             <FloorNavigator
