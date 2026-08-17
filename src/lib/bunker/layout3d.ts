@@ -3,16 +3,12 @@ import { roomsByFloor } from "./rooms";
 
 export interface RoomBox {
   room: RoomDef;
-  /** center x */
   x: number;
-  /** center z */
   z: number;
-  /** width along x */
   w: number;
-  /** depth along z */
   d: number;
-  /** which side of the corridor */
-  side: "north" | "south";
+  side: "north" | "south" | "east" | "west";
+  doorOffset?: number; // Added dynamic door positioning
 }
 
 export interface FloorLayout {
@@ -21,59 +17,149 @@ export interface FloorLayout {
   depth: number;
   corridorWidth: number;
   wallHeight: number;
-  core: { x: number; z: number; w: number; d: number };
+  roomDepth: number;
+  core: { w: number; d: number };
+  loopInnerW: number;
+  loopInnerD: number;
 }
 
 interface Row {
-  side: "north" | "south";
+  side: "north" | "south" | "east" | "west";
   items: { room: RoomDef; w: number }[];
   total: number;
 }
 
-const CORRIDOR = 2.4;
-const ROOM_DEPTH = 4.2;
+const CORRIDOR = 1.2;
+const ROOM_DEPTH = 3.8;
 const WALL_H = 2.7;
-const GAP = 0.12;
-const CORE_W = 3.2;
+const GAP = 0.08;
+const CORE_W = 4.4;
+const CORE_D = 3.6;
 
-/** Deterministic, data-driven layout: two room bands either side of a central corridor. */
 export function floorLayout(floorId: number): FloorLayout {
   const rooms = roomsByFloor(floorId);
 
   const north: Row = { side: "north", items: [], total: 0 };
   const south: Row = { side: "south", items: [], total: 0 };
+  const east: Row = { side: "east", items: [], total: 0 };
+  const west: Row = { side: "west", items: [], total: 0 };
 
+  // Distribute rooms cleanly across rows
   for (const room of rooms) {
-    const w = Math.max(2.4, room.span * 3.1);
-    const row = north.total <= south.total ? north : south;
-    row.items.push({ room, w });
-    row.total += w + GAP;
+    const w = Math.max(2.2, room.span * 2.9);
+
+    if (floorId === 1 && /entrance|main door/i.test(room.name)) {
+      west.items.push({ room, w });
+      continue;
+    }
+    if (floorId === 1 && /exit|emergency/i.test(room.name)) {
+      east.items.push({ room, w });
+      continue;
+    }
+
+    if (floorId === 1) {
+      const row = north.total <= south.total ? north : south;
+      row.items.push({ room, w });
+      row.total += w + GAP;
+      continue;
+    }
+
+    const sorted = [north, south, east, west].sort((a, b) => a.total - b.total);
+    sorted[0]?.items.push({ room, w });
+    sorted[0] && (sorted[0].total += w + GAP);
   }
 
-  const rowSpan = Math.max(north.total, south.total);
-  const coreX = rowSpan / 2 + CORE_W / 2 + 0.6;
-  const width = (coreX + CORE_W / 2) * 2 + 1.2;
-  const depth = ROOM_DEPTH * 2 + CORRIDOR + 1.2;
+  // Recalculate true totals
+  for (const row of [north, south, east, west]) {
+    row.total =
+      row.items.reduce((sum, item) => sum + item.w, 0) + Math.max(0, row.items.length - 1) * GAP;
+  }
+
+  // Set inner loop dimensions driven by room totals and core size
+  const loopInnerW = Math.max(CORE_W + 10, north.total, south.total);
+  const loopInnerD = Math.max(CORE_D + 1.2, east.total, west.total);
+
+  const outerLoopW = loopInnerW + 2 * CORRIDOR;
+  const outerLoopD = loopInnerD + 2 * CORRIDOR;
+
+  const totalOuterD = outerLoopD + 2 * ROOM_DEPTH;
+  const targetSideSpan = totalOuterD;
+
+  const expandRow = (row: Row, target: number) => {
+    if (row.items.length === 0) return;
+    const diff = target - row.total;
+    if (diff > 0) {
+      const add = diff / row.items.length;
+      row.items.forEach((item) => {
+        item.w += add;
+      });
+      row.total = target;
+    }
+  };
+
+  expandRow(north, outerLoopW);
+  expandRow(south, outerLoopW);
+  expandRow(east, targetSideSpan);
+  expandRow(west, targetSideSpan);
+
+  const width = outerLoopW + 2 * ROOM_DEPTH;
+  const depth = outerLoopD + 2 * ROOM_DEPTH;
 
   const boxes: RoomBox[] = [];
-  for (const row of [north, south]) {
+
+  const processRow = (row: Row) => {
     let cursor = -row.total / 2;
     for (const item of row.items) {
-      const x = cursor + item.w / 2;
-      cursor += item.w + GAP;
-      boxes.push({
-        room: item.room,
-        x,
-        w: item.w,
-        d: ROOM_DEPTH,
-        z:
-          row.side === "north"
-            ? CORRIDOR / 2 + ROOM_DEPTH / 2
-            : -(CORRIDOR / 2 + ROOM_DEPTH / 2),
-        side: row.side,
-      });
+      const w = item.w;
+      const center = cursor + w / 2;
+      cursor += w + GAP;
+
+      let x = 0;
+      let z = 0;
+      let doorOffset = 0;
+
+      // Ensure the door strictly opens onto the ring corridor bounds
+      const doorW = Math.min(1.3, w * 0.4);
+      const safeMargin = doorW / 2 + 0.2;
+
+      if (row.side === "north") {
+        x = center;
+        z = -outerLoopD / 2 - ROOM_DEPTH / 2;
+        const max = outerLoopW / 2 - safeMargin;
+        const min = -outerLoopW / 2 + safeMargin;
+        const clamped = Math.max(min, Math.min(max, center));
+        doorOffset = -(clamped - center);
+      } else if (row.side === "south") {
+        x = center;
+        z = outerLoopD / 2 + ROOM_DEPTH / 2;
+        const max = outerLoopW / 2 - safeMargin;
+        const min = -outerLoopW / 2 + safeMargin;
+        const clamped = Math.max(min, Math.min(max, center));
+        doorOffset = clamped - center;
+      } else if (row.side === "east") {
+        z = center;
+        x = outerLoopW / 2 + ROOM_DEPTH / 2;
+        const max = outerLoopD / 2 - safeMargin;
+        const min = -outerLoopD / 2 + safeMargin;
+        const clamped = Math.max(min, Math.min(max, center));
+        doorOffset = -(clamped - center);
+      } else if (row.side === "west") {
+        z = center;
+        x = -outerLoopW / 2 - ROOM_DEPTH / 2;
+        const max = outerLoopD / 2 - safeMargin;
+        const min = -outerLoopD / 2 + safeMargin;
+        const clamped = Math.max(min, Math.min(max, center));
+        doorOffset = clamped - center;
+      }
+
+      boxes.push({ room: item.room, x, z, w, d: ROOM_DEPTH, side: row.side, doorOffset });
     }
-  }
+  };
+
+  processRow(north);
+  processRow(south);
+  processRow(east);
+  processRow(west);
 
   return {
     boxes,
@@ -81,11 +167,13 @@ export function floorLayout(floorId: number): FloorLayout {
     depth,
     corridorWidth: CORRIDOR,
     wallHeight: WALL_H,
-    core: { x: coreX, z: 0, w: CORE_W, d: CORRIDOR + 1.4 },
+    roomDepth: ROOM_DEPTH,
+    core: { w: CORE_W, d: CORE_D },
+    loopInnerW,
+    loopInnerD,
   };
 }
 
-/** Hex approximations of the CSS system tokens (three.js cannot parse oklch). */
 export const SYSTEM_HEX: Record<SystemId, string> = {
   water: "#3cb6e0",
   air: "#7ed4e6",

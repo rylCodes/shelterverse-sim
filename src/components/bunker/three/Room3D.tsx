@@ -42,7 +42,7 @@ export function Room3D({
   onSelect,
   onHover,
 }: Props) {
-  const { w, d } = box;
+  const { w, d, doorOffset = 0 } = box;
   const wallMat = selected
     ? materials.wallSelected
     : hovered
@@ -51,33 +51,47 @@ export function Room3D({
         ? materials.wallDim
         : materials.wall;
 
-  // corridor-facing side (door gap) is -z for north rooms, +z for south rooms
-  const doorSign = box.side === "north" ? -1 : 1;
   const doorW = Math.min(1.3, w * 0.4);
-  const sideW = (w - doorW) / 2;
+
+  // Safely clamp the offset so there's always at least a little bit of wall structure remaining
+  const maxOffset = w / 2 - doorW / 2 - 0.1;
+  const safeOffset = Math.max(-maxOffset, Math.min(maxOffset, doorOffset));
+
+  const leftW = w / 2 + safeOffset - doorW / 2;
+  const rightW = w / 2 - safeOffset - doorW / 2;
+
+  const leftCenter = -w / 2 + leftW / 2;
+  const rightCenter = w / 2 - rightW / 2;
+
+  // Door faces local -Z by default. We rotate the room so local -Z faces the central ring corridor.
+  const rotationY =
+    box.side === "north"
+      ? Math.PI
+      : box.side === "south"
+        ? 0
+        : box.side === "east"
+          ? Math.PI / 2
+          : -Math.PI / 2;
 
   const walls = useMemo(() => {
-    const list: { pos: [number, number, number]; scale: [number, number, number] }[] = [
-      // back wall (away from corridor)
-      { pos: [0, height / 2, -doorSign * (d / 2)], scale: [w, height, T] },
-      // left / right walls
+    return [
+      // Outer back wall
+      { pos: [0, height / 2, d / 2], scale: [w, height, T] },
+      // Side walls
       { pos: [-w / 2, height / 2, 0], scale: [T, height, d] },
       { pos: [w / 2, height / 2, 0], scale: [T, height, d] },
-      // corridor wall split by a door opening
-      { pos: [-(doorW / 2 + sideW / 2), height / 2, doorSign * (d / 2)], scale: [sideW, height, T] },
-      { pos: [doorW / 2 + sideW / 2, height / 2, doorSign * (d / 2)], scale: [sideW, height, T] },
-      // lintel over the door
-      {
-        pos: [0, height - 0.25, doorSign * (d / 2)],
-        scale: [doorW, 0.5, T],
-      },
-    ];
-    return list;
-  }, [w, d, height, doorSign, doorW, sideW]);
+      // Corridor-facing front wall split by offset door
+      { pos: [leftCenter, height / 2, -d / 2], scale: [leftW, height, T] },
+      { pos: [rightCenter, height / 2, -d / 2], scale: [rightW, height, T] },
+      // Lintel over door
+      { pos: [safeOffset, height - 0.25, -d / 2], scale: [doorW, 0.5, T] },
+    ] as const;
+  }, [w, d, height, leftCenter, leftW, rightCenter, rightW, safeOffset, doorW]);
 
   return (
     <group
       position={[box.x, 0, box.z]}
+      rotation={[0, rotationY, 0]}
       onClick={(e) => {
         e.stopPropagation();
         onSelect(box.room.id);
@@ -92,7 +106,7 @@ export function Room3D({
         onHover(null);
       }}
     >
-      {/* floor tile — also the click target */}
+      {/* Floor Tile */}
       <mesh
         geometry={UNIT_BOX}
         material={selected ? materials.tileSelected : materials.tile}
@@ -100,20 +114,29 @@ export function Room3D({
         scale={[w - 0.04, 0.06, d - 0.04]}
       />
 
+      {/* Room Walls */}
       {walls.map((s, i) => (
-        <mesh key={i} geometry={UNIT_BOX} material={wallMat} position={s.pos} scale={s.scale} raycast={() => null} />
+        <mesh
+          key={i}
+          geometry={UNIT_BOX}
+          material={wallMat}
+          position={s.pos as [number, number, number]}
+          scale={s.scale as [number, number, number]}
+          raycast={() => null}
+        />
       ))}
 
-      {/* accent strip along the corridor face */}
+      {/* Corridor Accent Threshold Strip aligned perfectly under the door */}
       <mesh
         geometry={UNIT_BOX}
-        position={[0, 0.09, doorSign * (d / 2 - 0.09)]}
-        scale={[w - 0.3, 0.05, 0.1]}
+        position={[safeOffset, 0.09, -d / 2 + 0.09]}
+        scale={[doorW, 0.05, 0.1]}
         raycast={() => null}
       >
         <meshBasicMaterial color={accentHex} transparent opacity={selected ? 0.95 : 0.4} />
       </mesh>
 
+      {/* Internal Furniture / Fixtures */}
       <Fixtures3D
         kind={box.room.fixture}
         w={w}
@@ -122,6 +145,7 @@ export function Room3D({
         accent={materials.fixtureAccent}
       />
 
+      {/* Label Tag */}
       {(showLabel || hovered || selected) && (
         <Html
           position={[0, height + 0.35, 0]}
