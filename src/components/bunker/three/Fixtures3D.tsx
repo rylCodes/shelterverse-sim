@@ -18,7 +18,14 @@ type Part = {
   accent?: boolean;
 };
 
-function grid(count: number, cols: number, sx: number, sy: number, sz: number, opts?: Partial<Part>): Part[] {
+function grid(
+  count: number,
+  cols: number,
+  sx: number,
+  sy: number,
+  sz: number,
+  opts?: Partial<Part>,
+): Part[] {
   const rows = Math.ceil(count / cols);
   const parts: Part[] = [];
   for (let i = 0; i < count; i++) {
@@ -39,10 +46,7 @@ function grid(count: number, cols: number, sx: number, sy: number, sz: number, o
 function partsFor(kind: FixtureKind): Part[] {
   switch (kind) {
     case "bunks":
-      return [
-        ...grid(2, 2, 0.9, 0.45, 1.9),
-        { u: 0.32, v: -0.3, sx: 0.5, sy: 0.7, sz: 0.5 },
-      ];
+      return [...grid(2, 2, 0.9, 0.45, 1.9), { u: 0.32, v: -0.3, sx: 0.5, sy: 0.7, sz: 0.5 }];
     case "beds":
       return grid(2, 2, 1, 0.4, 2);
     case "tanks":
@@ -122,6 +126,8 @@ export function Fixtures3D({ kind, w, d, base, accent }: Props) {
         return (
           <mesh
             key={i}
+            castShadow // Crucial for realism
+            receiveShadow // Crucial for realism
             geometry={p.round ? UNIT_CYL : UNIT_BOX}
             material={p.accent ? accent : base}
             position={[p.u * iw, p.sy / 2 + 0.06, p.v * id]}

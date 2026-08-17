@@ -19,11 +19,16 @@ export function Floor3DView({ floorId, selectedRoom, onSelectFloor, onSelectRoom
   const [resetKey, setResetKey] = useState(0);
   const [labels, setLabels] = useState(false);
   const [fullscreen, setFullscreen] = useState(false);
+  const [fsKey, setFsKey] = useState(0);
 
   useEffect(() => setHydrated(true), []);
 
   useEffect(() => {
-    const h = () => setFullscreen(Boolean(document.fullscreenElement));
+    const h = () => {
+      const isFs = Boolean(document.fullscreenElement);
+      setFullscreen(isFs);
+      setFsKey((k) => k + 1);
+    };
     document.addEventListener("fullscreenchange", h);
     return () => document.removeEventListener("fullscreenchange", h);
   }, []);
@@ -122,6 +127,7 @@ export function Floor3DView({ floorId, selectedRoom, onSelectFloor, onSelectRoom
       {hydrated ? (
         <Suspense fallback={<Loading />}>
           <Floor3DCanvas
+            key={fsKey}
             floorId={floorId}
             selectedRoom={selectedRoom}
             showLabels={labels}
