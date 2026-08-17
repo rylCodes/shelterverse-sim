@@ -6,6 +6,23 @@ import type { RoomBox } from "@/lib/bunker/layout3d";
 import { PALETTE_3D } from "@/lib/bunker/layout3d";
 import { Fixtures3D, UNIT_BOX } from "./Fixtures3D";
 
+export interface FloorMaterials {
+  wall: THREE.MeshPhysicalMaterial;
+  wallHover: THREE.MeshPhysicalMaterial;
+  wallDim: THREE.MeshPhysicalMaterial;
+  wallSelected: THREE.MeshPhysicalMaterial;
+  tile: THREE.MeshPhysicalMaterial;
+  tileSelected: THREE.MeshPhysicalMaterial;
+  fixture: THREE.MeshPhysicalMaterial;
+  fixtureAccent: THREE.MeshPhysicalMaterial;
+  slab: THREE.MeshPhysicalMaterial;
+  corridor: THREE.MeshPhysicalMaterial;
+  core: THREE.MeshPhysicalMaterial;
+  metalDoor: THREE.MeshPhysicalMaterial;
+  indicator: THREE.MeshBasicMaterial;
+  railing: THREE.MeshPhysicalMaterial;
+}
+
 interface Props {
   box: RoomBox;
   height: number;
@@ -15,20 +32,12 @@ interface Props {
   hovered: boolean;
   showLabel: boolean;
   onHover: (id: string | null) => void;
-  materials: {
-    wall: THREE.Material;
-    wallHover: THREE.Material;
-    wallDim: THREE.Material;
-    wallSelected: THREE.Material;
-    tile: THREE.Material;
-    tileSelected: THREE.Material;
-    fixture: THREE.Material;
-    fixtureAccent: THREE.Material;
-  };
+  materials: FloorMaterials;
   onSelect: (id: string) => void;
 }
 
 const T = 0.14; // wall thickness
+const TRIM_T = 0.18; // baseboard thickness
 
 export function Room3D({
   box,
@@ -43,6 +52,7 @@ export function Room3D({
   onHover,
 }: Props) {
   const { w, d, doorOffset = 0 } = box;
+
   const wallMat = selected
     ? materials.wallSelected
     : hovered
@@ -52,18 +62,14 @@ export function Room3D({
         : materials.wall;
 
   const doorW = Math.min(1.3, w * 0.4);
-
-  // Safely clamp the offset so there's always at least a little bit of wall structure remaining
   const maxOffset = w / 2 - doorW / 2 - 0.1;
   const safeOffset = Math.max(-maxOffset, Math.min(maxOffset, doorOffset));
 
   const leftW = w / 2 + safeOffset - doorW / 2;
   const rightW = w / 2 - safeOffset - doorW / 2;
-
   const leftCenter = -w / 2 + leftW / 2;
   const rightCenter = w / 2 - rightW / 2;
 
-  // Door faces local -Z by default. We rotate the room so local -Z faces the central ring corridor.
   const rotationY =
     box.side === "north"
       ? Math.PI
@@ -75,18 +81,23 @@ export function Room3D({
 
   const walls = useMemo(() => {
     return [
-      // Outer back wall
       { pos: [0, height / 2, d / 2], scale: [w, height, T] },
-      // Side walls
       { pos: [-w / 2, height / 2, 0], scale: [T, height, d] },
       { pos: [w / 2, height / 2, 0], scale: [T, height, d] },
-      // Corridor-facing front wall split by offset door
       { pos: [leftCenter, height / 2, -d / 2], scale: [leftW, height, T] },
       { pos: [rightCenter, height / 2, -d / 2], scale: [rightW, height, T] },
-      // Lintel over door
       { pos: [safeOffset, height - 0.25, -d / 2], scale: [doorW, 0.5, T] },
     ] as const;
   }, [w, d, height, leftCenter, leftW, rightCenter, rightW, safeOffset, doorW]);
+
+  // Adding architectural trims for realistic AO catching
+  const trims = useMemo(() => {
+    return [
+      { pos: [0, 0.08, d / 2 - 0.02], scale: [w - T, 0.12, TRIM_T] }, // Back baseboard
+      { pos: [-w / 2 + 0.02, 0.08, 0], scale: [TRIM_T, 0.12, d - T] }, // Left baseboard
+      { pos: [w / 2 - 0.02, 0.08, 0], scale: [TRIM_T, 0.12, d - T] }, // Right baseboard
+    ] as const;
+  }, [w, d]);
 
   return (
     <group
@@ -108,16 +119,33 @@ export function Room3D({
     >
       {/* Floor Tile */}
       <mesh
+        receiveShadow
         geometry={UNIT_BOX}
         material={selected ? materials.tileSelected : materials.tile}
         position={[0, 0.02, 0]}
         scale={[w - 0.04, 0.06, d - 0.04]}
       />
 
+      {/* Baseboards (Adds depth for AO) */}
+      {trims.map((s, i) => (
+        <mesh
+          key={`trim-${i}`}
+          castShadow
+          receiveShadow
+          geometry={UNIT_BOX}
+          material={materials.metalDoor} // Dark metallic trims look industrial
+          position={s.pos as [number, number, number]}
+          scale={s.scale as [number, number, number]}
+          raycast={() => null}
+        />
+      ))}
+
       {/* Room Walls */}
       {walls.map((s, i) => (
         <mesh
-          key={i}
+          key={`wall-${i}`}
+          castShadow
+          receiveShadow
           geometry={UNIT_BOX}
           material={wallMat}
           position={s.pos as [number, number, number]}
@@ -126,14 +154,21 @@ export function Room3D({
         />
       ))}
 
-      {/* Corridor Accent Threshold Strip aligned perfectly under the door */}
+      {/* Corridor Accent Threshold Strip */}
       <mesh
+        receiveShadow
         geometry={UNIT_BOX}
-        position={[safeOffset, 0.09, -d / 2 + 0.09]}
-        scale={[doorW, 0.05, 0.1]}
+        position={[safeOffset, 0.05, -d / 2 + 0.09]}
+        scale={[doorW, 0.1, 0.14]}
         raycast={() => null}
       >
-        <meshBasicMaterial color={accentHex} transparent opacity={selected ? 0.95 : 0.4} />
+        <meshStandardMaterial
+          color={accentHex}
+          emissive={accentHex}
+          emissiveIntensity={selected || hovered ? 2 : 0.5}
+          transparent
+          opacity={selected ? 1 : 0.7}
+        />
       </mesh>
 
       {/* Internal Furniture / Fixtures */}
@@ -148,7 +183,7 @@ export function Room3D({
       {/* Label Tag */}
       {(showLabel || hovered || selected) && (
         <Html
-          position={[0, height + 0.35, 0]}
+          position={[0, height + 0.4, 0]}
           center
           distanceFactor={22}
           zIndexRange={[10, 0]}
@@ -161,12 +196,15 @@ export function Room3D({
               fontSize: 11,
               letterSpacing: "0.14em",
               textTransform: "uppercase",
-              padding: "2px 6px",
-              borderRadius: 3,
+              padding: "4px 8px",
+              borderRadius: 4,
               border: `1px solid ${selected || hovered ? accentHex : PALETTE_3D.slabEdge}`,
-              background: "rgba(16,20,26,0.82)",
+              background: "rgba(10,14,20,0.85)",
               color: selected || hovered ? accentHex : "#c8d2df",
-              opacity: dimmed && !hovered ? 0.5 : 1,
+              opacity: dimmed && !hovered ? 0.4 : 1,
+              backdropFilter: "blur(4px)",
+              transition: "all 0.2s ease-in-out",
+              boxShadow: selected || hovered ? `0 0 10px ${accentHex}40` : "none",
             }}
           >
             {box.room.name}

@@ -1,6 +1,7 @@
 import { useEffect } from "react";
 import { Canvas, useThree } from "@react-three/fiber";
-import { OrbitControls, Grid } from "@react-three/drei";
+import { OrbitControls, Grid, Environment } from "@react-three/drei";
+import { EffectComposer, N8AO, Bloom, Vignette } from "@react-three/postprocessing";
 import type { OrbitControls as OrbitControlsImpl } from "three-stdlib";
 import { floorLayout, PALETTE_3D } from "@/lib/bunker/layout3d";
 import { Floor3DScene } from "./Floor3DScene";
@@ -19,7 +20,6 @@ function camFor(floorId: number, aspect = 1.6): [number, number, number] {
   return [18 * k, 15 * k, 22 * k];
 }
 
-/** Frames the floor whenever it changes, on reset, and on resize. */
 function FitCamera({ floorId, resetKey }: { floorId: number; resetKey: number }) {
   const camera = useThree((s) => s.camera);
   const size = useThree((s) => s.size);
@@ -39,6 +39,7 @@ function FitCamera({ floorId, resetKey }: { floorId: number; resetKey: number })
 
   return null;
 }
+
 export default function Floor3DCanvas({
   floorId,
   selectedRoom,
@@ -47,21 +48,21 @@ export default function Floor3DCanvas({
   onSelectRoom,
 }: Props) {
   return (
-
     <Canvas
+      shadows // Enable shadow maps
       frameloop="demand"
       dpr={[1, 2]}
       camera={{ position: camFor(floorId), fov: 42, near: 0.5, far: 300 }}
-      gl={{ antialias: true, powerPreference: "high-performance" }}
+      gl={{ antialias: true, powerPreference: "high-performance", toneMappingExposure: 1.2 }}
       style={{ touchAction: "none", background: PALETTE_3D.background }}
     >
       <color attach="background" args={[PALETTE_3D.background]} />
       <fog attach="fog" args={[PALETTE_3D.background, 45, 130]} />
+
+      {/* HDRI Environment for realistic metallic reflections and ambient light */}
+      <Environment preset="city" environmentIntensity={0.15} />
+
       <FitCamera floorId={floorId} resetKey={resetKey} />
-
-
-
-
 
       <Grid
         args={[120, 120]}
@@ -83,9 +84,17 @@ export default function Floor3DCanvas({
         onSelectRoom={onSelectRoom}
       />
 
+      {/* Post-Processing Pipeline */}
+      <EffectComposer enableNormalPass={false} multisampling={4}>
+        {/* N8AO adds highly realistic contact shadows in corners */}
+        <N8AO aoRadius={1.5} intensity={1.2} color="#000000" />
+        {/* Bloom creates the glowing effect on accents and screens */}
+        <Bloom luminanceThreshold={0.6} luminanceSmoothing={0.9} intensity={1.2} mipmapBlur />
+        <Vignette eskil={false} offset={0.1} darkness={0.8} />
+      </EffectComposer>
+
       <OrbitControls
         makeDefault
-
         enableDamping
         dampingFactor={0.08}
         minDistance={6}

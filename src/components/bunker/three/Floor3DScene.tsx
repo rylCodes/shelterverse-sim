@@ -4,7 +4,7 @@ import * as THREE from "three";
 import { Html } from "@react-three/drei";
 import { floorLayout, PALETTE_3D, SYSTEM_HEX } from "@/lib/bunker/layout3d";
 import { floorById } from "@/lib/bunker/floors";
-import { Room3D } from "./Room3D";
+import { Room3D, FloorMaterials } from "./Room3D";
 import { UNIT_BOX } from "./Fixtures3D";
 
 interface Props {
@@ -19,37 +19,45 @@ export function Floor3DScene({ floorId, selectedRoom, showLabels, onSelectRoom }
   const floor = floorById(floorId);
   const accent = SYSTEM_HEX[floor.accent];
 
-  const materials = useMemo(() => {
-    const std = (color: string, opts: THREE.MeshStandardMaterialParameters = {}) =>
-      new THREE.MeshStandardMaterial({ color, roughness: 0.85, metalness: 0.05, ...opts });
+  const materials: FloorMaterials = useMemo(() => {
+    const phys = (color: string, opts: THREE.MeshPhysicalMaterialParameters = {}) =>
+      new THREE.MeshPhysicalMaterial({ color, roughness: 0.8, metalness: 0.1, ...opts });
+
     return {
-      wall: std(PALETTE_3D.wall),
-      wallHover: std(PALETTE_3D.wallTop, {
+      wall: phys(PALETTE_3D.wall, { roughness: 0.9, clearcoat: 0.05 }),
+      wallHover: phys(PALETTE_3D.wallTop, {
         emissive: new THREE.Color(accent),
-        emissiveIntensity: 0.12,
+        emissiveIntensity: 0.2,
       }),
-      wallDim: std(PALETTE_3D.wall, { transparent: true, opacity: 0.35 }),
-      wallSelected: std(PALETTE_3D.wallTop, {
+      wallDim: phys(PALETTE_3D.wall, { transparent: true, opacity: 0.35, depthWrite: false }),
+      wallSelected: phys(PALETTE_3D.wallTop, {
         emissive: new THREE.Color(accent),
-        emissiveIntensity: 0.28,
+        emissiveIntensity: 0.5,
       }),
-      tile: std(PALETTE_3D.slab),
-      tileSelected: std(PALETTE_3D.slab, {
+      tile: phys(PALETTE_3D.slab, { roughness: 0.4, clearcoat: 0.2 }),
+      tileSelected: phys(PALETTE_3D.slab, {
+        roughness: 0.2,
+        clearcoat: 0.5,
         emissive: new THREE.Color(accent),
-        emissiveIntensity: 0.45,
+        emissiveIntensity: 0.3,
       }),
-      fixture: std(PALETTE_3D.fixture),
-      fixtureAccent: std(accent, { emissive: new THREE.Color(accent), emissiveIntensity: 0.18 }),
-      slab: std(PALETTE_3D.slab, { roughness: 1 }),
-      corridor: std(PALETTE_3D.corridor, { roughness: 1 }),
-      core: std(PALETTE_3D.core),
-      metalDoor: new THREE.MeshStandardMaterial({
-        color: "#a0b0c0",
-        metalness: 0.7,
-        roughness: 0.3,
+      fixture: phys(PALETTE_3D.fixture, { roughness: 0.6, metalness: 0.4 }),
+      fixtureAccent: phys(accent, {
+        emissive: new THREE.Color(accent),
+        emissiveIntensity: 1.2,
+        roughness: 0.2,
+        metalness: 0.8,
+      }),
+      slab: phys(PALETTE_3D.slab, { roughness: 1, metalness: 0 }),
+      corridor: phys(PALETTE_3D.corridor, { roughness: 0.5, metalness: 0.2, clearcoat: 0.1 }),
+      core: phys(PALETTE_3D.core, { roughness: 0.85 }),
+      metalDoor: phys("#8a9ba8", {
+        metalness: 0.8,
+        roughness: 0.25,
+        clearcoat: 0.3,
       }),
       indicator: new THREE.MeshBasicMaterial({ color: accent }),
-      railing: std("#303842", { metalness: 0.5, roughness: 0.4 }),
+      railing: phys("#303842", { metalness: 0.7, roughness: 0.2, clearcoat: 1.0 }),
     };
   }, [accent]);
 
@@ -71,13 +79,25 @@ export function Floor3DScene({ floorId, selectedRoom, showLabels, onSelectRoom }
 
   return (
     <group>
-      <ambientLight intensity={1.15} />
-      <hemisphereLight args={["#93a7bd", "#10141a", 0.7]} />
-      <directionalLight position={[14, 20, 10]} intensity={0.95} />
-      <directionalLight position={[-12, 10, -8]} intensity={0.3} />
+      <ambientLight intensity={0.6} />
+      <hemisphereLight args={["#a5b9cf", "#10141a", 0.4]} />
+
+      {/* Configured Directional Light for Dynamic Shadows */}
+      <directionalLight
+        castShadow
+        position={[20, 30, 20]}
+        intensity={1.2}
+        shadow-mapSize={[2048, 2048]}
+        shadow-bias={-0.0005}
+      >
+        <orthographicCamera attach="shadow-camera" args={[-40, 40, 40, -40, 0.5, 100]} />
+      </directionalLight>
+
+      <directionalLight position={[-15, 15, -10]} intensity={0.2} color="#8a9ba8" />
 
       {/* Main Floor Slab */}
       <mesh
+        receiveShadow
         geometry={UNIT_BOX}
         material={materials.slab}
         position={[0, -0.2, 0]}
@@ -87,32 +107,32 @@ export function Floor3DScene({ floorId, selectedRoom, showLabels, onSelectRoom }
       />
 
       {/* Ring Corridor Flooring */}
-      {/* North corridor */}
       <mesh
+        receiveShadow
         geometry={UNIT_BOX}
         material={materials.corridor}
         position={[0, 0.02, -loopInnerD / 2 - corridorWidth / 2]}
         scale={[outerLoopW, 0.05, corridorWidth]}
         raycast={() => null}
       />
-      {/* South corridor */}
       <mesh
+        receiveShadow
         geometry={UNIT_BOX}
         material={materials.corridor}
         position={[0, 0.02, loopInnerD / 2 + corridorWidth / 2]}
         scale={[outerLoopW, 0.05, corridorWidth]}
         raycast={() => null}
       />
-      {/* East corridor */}
       <mesh
+        receiveShadow
         geometry={UNIT_BOX}
         material={materials.corridor}
         position={[loopInnerW / 2 + corridorWidth / 2, 0.02, 0]}
         scale={[corridorWidth, 0.05, loopInnerD]}
         raycast={() => null}
       />
-      {/* West corridor */}
       <mesh
+        receiveShadow
         geometry={UNIT_BOX}
         material={materials.corridor}
         position={[-loopInnerW / 2 - corridorWidth / 2, 0.02, 0]}
@@ -122,6 +142,7 @@ export function Floor3DScene({ floorId, selectedRoom, showLabels, onSelectRoom }
 
       {/* Inner Central Core Floor Tile */}
       <mesh
+        receiveShadow
         geometry={UNIT_BOX}
         material={materials.corridor}
         position={[0, 0.02, 0]}
@@ -131,6 +152,8 @@ export function Floor3DScene({ floorId, selectedRoom, showLabels, onSelectRoom }
 
       {/* Outer Shell Walls */}
       <mesh
+        castShadow
+        receiveShadow
         geometry={UNIT_BOX}
         material={materials.core}
         position={[0, wallHeight / 2, -depth / 2 + 0.15]}
@@ -138,6 +161,8 @@ export function Floor3DScene({ floorId, selectedRoom, showLabels, onSelectRoom }
         raycast={() => null}
       />
       <mesh
+        castShadow
+        receiveShadow
         geometry={UNIT_BOX}
         material={materials.core}
         position={[0, wallHeight / 2, depth / 2 - 0.15]}
@@ -145,6 +170,8 @@ export function Floor3DScene({ floorId, selectedRoom, showLabels, onSelectRoom }
         raycast={() => null}
       />
       <mesh
+        castShadow
+        receiveShadow
         geometry={UNIT_BOX}
         material={materials.core}
         position={[-width / 2 + 0.15, wallHeight / 2, 0]}
@@ -152,6 +179,8 @@ export function Floor3DScene({ floorId, selectedRoom, showLabels, onSelectRoom }
         raycast={() => null}
       />
       <mesh
+        castShadow
+        receiveShadow
         geometry={UNIT_BOX}
         material={materials.core}
         position={[width / 2 - 0.15, wallHeight / 2, 0]}
@@ -163,8 +192,9 @@ export function Floor3DScene({ floorId, selectedRoom, showLabels, onSelectRoom }
       <group position={[0, 0, 0]}>
         {/* --- 1. ELEVATOR SHAFT (Left Side of Core) --- */}
         <group position={[-core.w / 4, 0, 0]}>
-          {/* Shaft Walls (Back, Left, Right) */}
           <mesh
+            castShadow
+            receiveShadow
             geometry={UNIT_BOX}
             material={materials.core}
             position={[0, wallHeight / 2, -core.d / 2]}
@@ -172,6 +202,8 @@ export function Floor3DScene({ floorId, selectedRoom, showLabels, onSelectRoom }
             raycast={() => null}
           />
           <mesh
+            castShadow
+            receiveShadow
             geometry={UNIT_BOX}
             material={materials.core}
             position={[-elevW / 2, wallHeight / 2, 0]}
@@ -179,6 +211,8 @@ export function Floor3DScene({ floorId, selectedRoom, showLabels, onSelectRoom }
             raycast={() => null}
           />
           <mesh
+            castShadow
+            receiveShadow
             geometry={UNIT_BOX}
             material={materials.core}
             position={[elevW / 2, wallHeight / 2, 0]}
@@ -186,8 +220,9 @@ export function Floor3DScene({ floorId, selectedRoom, showLabels, onSelectRoom }
             raycast={() => null}
           />
 
-          {/* Front Wall with Door Frame Cutout */}
           <mesh
+            castShadow
+            receiveShadow
             geometry={UNIT_BOX}
             material={materials.core}
             position={[-elevW / 2 + 0.2, wallHeight / 2, core.d / 2]}
@@ -195,6 +230,8 @@ export function Floor3DScene({ floorId, selectedRoom, showLabels, onSelectRoom }
             raycast={() => null}
           />
           <mesh
+            castShadow
+            receiveShadow
             geometry={UNIT_BOX}
             material={materials.core}
             position={[elevW / 2 - 0.2, wallHeight / 2, core.d / 2]}
@@ -202,6 +239,8 @@ export function Floor3DScene({ floorId, selectedRoom, showLabels, onSelectRoom }
             raycast={() => null}
           />
           <mesh
+            castShadow
+            receiveShadow
             geometry={UNIT_BOX}
             material={materials.core}
             position={[0, wallHeight - 0.3, core.d / 2]}
@@ -209,8 +248,9 @@ export function Floor3DScene({ floorId, selectedRoom, showLabels, onSelectRoom }
             raycast={() => null}
           />
 
-          {/* Metallic Sliding Doors */}
           <mesh
+            castShadow
+            receiveShadow
             geometry={UNIT_BOX}
             material={materials.metalDoor}
             position={[-0.32, (wallHeight - 0.6) / 2, core.d / 2 - 0.02]}
@@ -218,6 +258,8 @@ export function Floor3DScene({ floorId, selectedRoom, showLabels, onSelectRoom }
             raycast={() => null}
           />
           <mesh
+            castShadow
+            receiveShadow
             geometry={UNIT_BOX}
             material={materials.metalDoor}
             position={[0.32, (wallHeight - 0.6) / 2, core.d / 2 - 0.02]}
@@ -225,7 +267,6 @@ export function Floor3DScene({ floorId, selectedRoom, showLabels, onSelectRoom }
             raycast={() => null}
           />
 
-          {/* Elevator Call Panel & Illuminated Overhead Floor Display */}
           <mesh
             geometry={UNIT_BOX}
             material={materials.indicator}
@@ -234,6 +275,8 @@ export function Floor3DScene({ floorId, selectedRoom, showLabels, onSelectRoom }
             raycast={() => null}
           />
           <mesh
+            castShadow
+            receiveShadow
             geometry={UNIT_BOX}
             material={materials.metalDoor}
             position={[elevW / 2 - 0.1, 1.2, core.d / 2 + 0.07]}
@@ -248,8 +291,9 @@ export function Floor3DScene({ floorId, selectedRoom, showLabels, onSelectRoom }
             raycast={() => null}
           />
 
-          {/* Roof Cap */}
           <mesh
+            castShadow
+            receiveShadow
             geometry={UNIT_BOX}
             material={materials.core}
             position={[0, wallHeight - 0.05, 0]}
@@ -260,8 +304,9 @@ export function Floor3DScene({ floorId, selectedRoom, showLabels, onSelectRoom }
 
         {/* --- 2. OPEN STAIRWELL (Right Side of Core) --- */}
         <group position={[core.w / 4, 0, 0]}>
-          {/* Low-profile Perimeter Railing / Guard Walls so stairs stay visible */}
           <mesh
+            castShadow
+            receiveShadow
             geometry={UNIT_BOX}
             material={materials.core}
             position={[0, 0.45, -core.d / 2]}
@@ -269,6 +314,8 @@ export function Floor3DScene({ floorId, selectedRoom, showLabels, onSelectRoom }
             raycast={() => null}
           />
           <mesh
+            castShadow
+            receiveShadow
             geometry={UNIT_BOX}
             material={materials.core}
             position={[stairW / 2, 0.45, 0]}
@@ -276,6 +323,8 @@ export function Floor3DScene({ floorId, selectedRoom, showLabels, onSelectRoom }
             raycast={() => null}
           />
           <mesh
+            castShadow
+            receiveShadow
             geometry={UNIT_BOX}
             material={materials.core}
             position={[-stairW / 2, 0.45, -core.d / 4]}
@@ -283,10 +332,11 @@ export function Floor3DScene({ floorId, selectedRoom, showLabels, onSelectRoom }
             raycast={() => null}
           />
 
-          {/* Stair Treads ascending up */}
           {Array.from({ length: 8 }).map((_, i) => (
             <mesh
               key={i}
+              castShadow
+              receiveShadow
               geometry={UNIT_BOX}
               material={materials.wall}
               position={[0, 0.12 + i * 0.26, core.d / 2 - 0.3 - i * 0.35]}
@@ -295,8 +345,9 @@ export function Floor3DScene({ floorId, selectedRoom, showLabels, onSelectRoom }
             />
           ))}
 
-          {/* Landing Platform */}
           <mesh
+            castShadow
+            receiveShadow
             geometry={UNIT_BOX}
             material={materials.wall}
             position={[0, 2.1, -core.d / 2 + 0.5]}
@@ -304,8 +355,9 @@ export function Floor3DScene({ floorId, selectedRoom, showLabels, onSelectRoom }
             raycast={() => null}
           />
 
-          {/* Metallic Handrails */}
           <mesh
+            castShadow
+            receiveShadow
             geometry={UNIT_BOX}
             material={materials.railing}
             position={[-stairW / 2 + 0.2, 1.15, 0]}
@@ -314,6 +366,8 @@ export function Floor3DScene({ floorId, selectedRoom, showLabels, onSelectRoom }
             raycast={() => null}
           />
           <mesh
+            castShadow
+            receiveShadow
             geometry={UNIT_BOX}
             material={materials.railing}
             position={[stairW / 2 - 0.2, 1.15, 0]}
