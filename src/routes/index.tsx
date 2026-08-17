@@ -1,7 +1,8 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useReducer, useState } from "react";
-import { Maximize2, Play, ShieldAlert } from "lucide-react";
+import { Box, Maximize2, Play, ShieldAlert, Square } from "lucide-react";
 import { BunkerVisualization } from "@/components/bunker/BunkerVisualization";
+import { Floor3DView } from "@/components/bunker/three/Floor3DView";
 import { FloorNavigator } from "@/components/bunker/FloorNavigator";
 import { SystemsView } from "@/components/bunker/SystemsView";
 import { SurvivalDashboard } from "@/components/bunker/SurvivalDashboard";
@@ -33,6 +34,7 @@ export const Route = createFileRoute("/")({
 function Index() {
   const [state, dispatch] = useReducer(reducer, undefined, initialState);
   const [running, setRunning] = useState(false);
+  const [viewMode, setViewMode] = useState<"2d" | "3d">("2d");
 
   useEffect(() => {
     if (!running) return;
@@ -102,13 +104,54 @@ function Index() {
           </div>
 
           <div className="order-1 flex flex-col gap-3 lg:order-2">
-            <div className={presenting ? "h-[80vh]" : "h-[70vh] min-h-125"}>
-              <BunkerVisualization
-                state={state}
-                onSelectRoom={(room) => dispatch({ type: "selectRoom", room })}
-                onSelectFloor={(floor) => dispatch({ type: "selectFloor", floor })}
-              />
+            <div className="flex flex-wrap items-center gap-1.5">
+              <div className="flex overflow-hidden rounded border border-border">
+                <button
+                  onClick={() => setViewMode("2d")}
+                  aria-pressed={viewMode === "2d"}
+                  className={`px-2.5 py-1.5 font-mono text-[10px] uppercase tracking-[0.14em] transition-colors ${
+                    viewMode === "2d"
+                      ? "bg-primary/20 text-foreground"
+                      : "bg-card/60 text-muted-foreground hover:text-foreground"
+                  }`}
+                >
+                  <Square className="mr-1 inline h-3 w-3" /> 2D Section
+                </button>
+                <button
+                  onClick={() => setViewMode("3d")}
+                  aria-pressed={viewMode === "3d"}
+                  className={`border-l border-border px-2.5 py-1.5 font-mono text-[10px] uppercase tracking-[0.14em] transition-colors ${
+                    viewMode === "3d"
+                      ? "bg-primary/20 text-foreground"
+                      : "bg-card/60 text-muted-foreground hover:text-foreground"
+                  }`}
+                >
+                  <Box className="mr-1 inline h-3 w-3" /> 3D Explore
+                </button>
+              </div>
+              <p className="font-mono text-[9px] uppercase tracking-[0.18em] text-muted-foreground">
+                {viewMode === "3d"
+                  ? "Drag to orbit · scroll to zoom · right-drag to pan"
+                  : "Interactive cutaway section"}
+              </p>
             </div>
+            <div className={presenting ? "h-[80vh]" : "h-[70vh] min-h-125"}>
+              {viewMode === "2d" ? (
+                <BunkerVisualization
+                  state={state}
+                  onSelectRoom={(room) => dispatch({ type: "selectRoom", room })}
+                  onSelectFloor={(floor) => dispatch({ type: "selectFloor", floor })}
+                />
+              ) : (
+                <Floor3DView
+                  floorId={state.selectedFloor ?? 1}
+                  selectedRoom={state.selectedRoom}
+                  onSelectFloor={(floor) => dispatch({ type: "selectFloor", floor })}
+                  onSelectRoom={(room) => dispatch({ type: "selectRoom", room })}
+                />
+              )}
+            </div>
+
             <TimeControls
               day={state.day}
               hour={state.hour}
