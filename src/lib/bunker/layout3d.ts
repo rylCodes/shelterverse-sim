@@ -8,7 +8,7 @@ export interface RoomBox {
   w: number;
   d: number;
   side: "north" | "south" | "east" | "west";
-  doorOffset?: number; // Added dynamic door positioning
+  doorOffset?: number;
 }
 
 export interface FloorLayout {
@@ -21,6 +21,8 @@ export interface FloorLayout {
   core: { w: number; d: number };
   loopInnerW: number;
   loopInnerD: number;
+  blocks: { x: number; z: number; w: number; d: number }[];
+  surfacePaths: { x: number; z: number; w: number; d: number; side: "east" | "west" }[];
 }
 
 interface Row {
@@ -46,13 +48,22 @@ export function floorLayout(floorId: number): FloorLayout {
 
   // Distribute rooms cleanly across rows
   for (const room of rooms) {
-    const w = Math.max(2.2, room.span * 2.9);
+    let w = Math.max(2.2, room.span * 2.9); // Note: changed 'const w' to 'let w'
 
     if (floorId === 1 && /entrance|main door/i.test(room.name)) {
+      w = Math.max(7.5, w); // Force Main Entrance to be massive
       west.items.push({ room, w });
       continue;
     }
-    if (floorId === 1 && /exit|emergency/i.test(room.name)) {
+    // Move equipment storage explicitly to the south row for Floor 1
+    if (floorId === 1 && /emergency equipment/i.test(room.name)) {
+      south.items.push({ room, w });
+      south.total += w + GAP;
+      continue;
+    }
+    // Strictly isolate the emergency exit to the east
+    if (floorId === 1 && /emergency exit|exit access/i.test(room.name)) {
+      w = Math.max(4.5, w); // Force Emergency Exit to be larger, but smaller than main entrance
       east.items.push({ room, w });
       continue;
     }
@@ -97,10 +108,16 @@ export function floorLayout(floorId: number): FloorLayout {
     }
   };
 
-  expandRow(north, outerLoopW);
-  expandRow(south, outerLoopW);
-  expandRow(east, targetSideSpan);
-  expandRow(west, targetSideSpan);
+  // Skip expanding East/West on Floor 1 so they stay centered as solitary rooms
+  if (floorId === 1) {
+    expandRow(north, outerLoopW);
+    expandRow(south, outerLoopW);
+  } else {
+    expandRow(north, outerLoopW);
+    expandRow(south, outerLoopW);
+    expandRow(east, targetSideSpan);
+    expandRow(west, targetSideSpan);
+  }
 
   const width = outerLoopW + 2 * ROOM_DEPTH;
   const depth = outerLoopD + 2 * ROOM_DEPTH;
@@ -118,7 +135,6 @@ export function floorLayout(floorId: number): FloorLayout {
       let z = 0;
       let doorOffset = 0;
 
-      // Ensure the door strictly opens onto the ring corridor bounds
       const doorW = Math.min(1.3, w * 0.4);
       const safeMargin = doorW / 2 + 0.2;
 
@@ -161,6 +177,35 @@ export function floorLayout(floorId: number): FloorLayout {
   processRow(east);
   processRow(west);
 
+  // Generate Solid Blocks & Surface Paths for Floor 1 East/West gaps
+  const blocks: { x: number; z: number; w: number; d: number }[] = [];
+  const surfacePaths: { x: number; z: number; w: number; d: number; side: "east" | "west" }[] = [];
+
+  if (floorId === 1) {
+    const sideRows: Row[] = [east, west];
+    for (const row of sideRows) {
+      const item = row.items[0];
+      if (row.items.length === 1 && item) {
+        const roomW = item.w;
+        const blockL = (targetSideSpan - roomW) / 2;
+
+        // Z-positions for the top and bottom solid blocks to encase the room
+        const blockZ1 = -targetSideSpan / 2 + blockL / 2;
+        const blockZ2 = targetSideSpan / 2 - blockL / 2;
+
+        const x =
+          row.side === "east" ? outerLoopW / 2 + ROOM_DEPTH / 2 : -outerLoopW / 2 - ROOM_DEPTH / 2;
+
+        blocks.push({ x, z: blockZ1, w: ROOM_DEPTH, d: blockL });
+        blocks.push({ x, z: blockZ2, w: ROOM_DEPTH, d: blockL });
+
+        if (row.side === "east" || row.side === "west") {
+          surfacePaths.push({ x, z: 0, w: ROOM_DEPTH, d: roomW, side: row.side });
+        }
+      }
+    }
+  }
+
   return {
     boxes,
     width,
@@ -171,6 +216,8 @@ export function floorLayout(floorId: number): FloorLayout {
     core: { w: CORE_W, d: CORE_D },
     loopInnerW,
     loopInnerD,
+    blocks,
+    surfacePaths,
   };
 }
 
