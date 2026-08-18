@@ -62,6 +62,8 @@ export function People3D({ layout, floorId, scenario, population }: Props) {
       });
   }, [layout, floorId, scenario, population]);
 
+  if (typeof window !== "undefined") console.log("PEOPLE3D", floorId, JSON.stringify(figures));
+
   return (
     <group>
       {figures.map((f) => (
