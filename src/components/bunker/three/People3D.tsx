@@ -47,7 +47,8 @@ export function People3D({ layout, floorId, scenario, population }: Props) {
                 : -Math.PI / 2;
         // local room space: x across width, z across depth
         const lx = (p.spread.u - 0.5) * (box.w - 1.1);
-        const lz = (p.spread.v - 0.5) * (box.d - 1.4);
+        // Bias people toward the doorway half of the room so fixtures do not hide them
+        const lz = (p.spread.v * 0.42 - 0.46) * (box.d - 1.2);
         const cos = Math.cos(rotationY);
         const sin = Math.sin(rotationY);
         return {
