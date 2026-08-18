@@ -45,6 +45,8 @@ export function floorLayout(floorId: number): FloorLayout {
   const south: Row = { side: "south", items: [], total: 0 };
   const east: Row = { side: "east", items: [], total: 0 };
   const west: Row = { side: "west", items: [], total: 0 };
+  /** Floor 1 only: outer band holding the Main Entrance in front of decontamination. */
+  const westOuter: Row = { side: "west", items: [], total: 0 };
 
   // Distribute rooms cleanly across rows
   for (const room of rooms) {
@@ -52,7 +54,17 @@ export function floorLayout(floorId: number): FloorLayout {
 
     if (floorId === 1 && /entrance|main door/i.test(room.name)) {
       w = Math.max(7.5, w); // Force Main Entrance to be massive
-      west.items.push({ room, w });
+      westOuter.items.push({ room, w });
+      continue;
+    }
+    // Decontamination A & B sit between the entrance and the main corridor
+    if (floorId === 1 && /decontamination/i.test(room.name)) {
+      west.items.push({ room, w: Math.max(4.2, w) });
+      continue;
+    }
+    // Check-in belongs to the entry sequence, right beside the decon bays
+    if (floorId === 1 && /reception|check-in/i.test(room.name)) {
+      west.items.push({ room, w: Math.max(4.2, w) });
       continue;
     }
     // Move equipment storage explicitly to the south row for Floor 1
@@ -79,6 +91,7 @@ export function floorLayout(floorId: number): FloorLayout {
     sorted[0]?.items.push({ room, w });
     sorted[0] && (sorted[0].total += w + GAP);
   }
+
 
   // Recalculate true totals
   for (const row of [north, south, east, west]) {
@@ -108,10 +121,12 @@ export function floorLayout(floorId: number): FloorLayout {
     }
   };
 
-  // Skip expanding East/West on Floor 1 so they stay centered as solitary rooms
+  // Skip expanding East on Floor 1 so it stays centered as a solitary room
   if (floorId === 1) {
     expandRow(north, outerLoopW);
     expandRow(south, outerLoopW);
+    // West holds the decontamination band, which fills the whole side
+    expandRow(west, targetSideSpan);
   } else {
     expandRow(north, outerLoopW);
     expandRow(south, outerLoopW);
@@ -119,8 +134,11 @@ export function floorLayout(floorId: number): FloorLayout {
     expandRow(west, targetSideSpan);
   }
 
-  const width = outerLoopW + 2 * ROOM_DEPTH;
+  const entryBand = westOuter.items.length > 0 ? ROOM_DEPTH + GAP : 0;
+  // Keep the slab symmetric around the origin even with the extra entry band
+  const width = outerLoopW + 2 * ROOM_DEPTH + 2 * entryBand;
   const depth = outerLoopD + 2 * ROOM_DEPTH;
+
 
   const boxes: RoomBox[] = [];
 
@@ -177,34 +195,79 @@ export function floorLayout(floorId: number): FloorLayout {
   processRow(east);
   processRow(west);
 
+  // Floor 1: Main Entrance sits in an outer band, in front of the decon bays
+  const westOuterX = -outerLoopW / 2 - ROOM_DEPTH / 2 - entryBand;
+  const entrance = westOuter.items[0];
+  if (entrance) {
+    const deconBoxes = boxes.filter(
+      (b) => b.side === "west" && /decontamination/i.test(b.room.name),
+    );
+    // Aim the entrance door at the seam between Decon A and Decon B
+    const targetZ =
+      deconBoxes.length > 0
+        ? deconBoxes.reduce((sum, b) => sum + b.z, 0) / deconBoxes.length
+        : 0;
+    boxes.push({
+      room: entrance.room,
+      x: westOuterX,
+      z: targetZ,
+      w: entrance.w,
+      d: ROOM_DEPTH,
+      side: "west",
+      doorOffset: 0,
+    });
+  }
+
   // Generate Solid Blocks & Surface Paths for Floor 1 East/West gaps
   const blocks: { x: number; z: number; w: number; d: number }[] = [];
   const surfacePaths: { x: number; z: number; w: number; d: number; side: "east" | "west" }[] = [];
 
   if (floorId === 1) {
-    const sideRows: Row[] = [east, west];
-    for (const row of sideRows) {
-      const item = row.items[0];
-      if (row.items.length === 1 && item) {
-        const roomW = item.w;
-        const blockL = (targetSideSpan - roomW) / 2;
+    const item = east.items[0];
+    if (east.items.length === 1 && item) {
+      const roomW = item.w;
+      const blockL = (targetSideSpan - roomW) / 2;
+      const blockZ1 = -targetSideSpan / 2 + blockL / 2;
+      const blockZ2 = targetSideSpan / 2 - blockL / 2;
+      const x = outerLoopW / 2 + ROOM_DEPTH / 2;
 
-        // Z-positions for the top and bottom solid blocks to encase the room
-        const blockZ1 = -targetSideSpan / 2 + blockL / 2;
-        const blockZ2 = targetSideSpan / 2 - blockL / 2;
+      blocks.push({ x, z: blockZ1, w: ROOM_DEPTH, d: blockL });
+      blocks.push({ x, z: blockZ2, w: ROOM_DEPTH, d: blockL });
+      surfacePaths.push({ x, z: 0, w: ROOM_DEPTH, d: roomW, side: "east" });
+    }
 
-        const x =
-          row.side === "east" ? outerLoopW / 2 + ROOM_DEPTH / 2 : -outerLoopW / 2 - ROOM_DEPTH / 2;
-
-        blocks.push({ x, z: blockZ1, w: ROOM_DEPTH, d: blockL });
-        blocks.push({ x, z: blockZ2, w: ROOM_DEPTH, d: blockL });
-
-        if (row.side === "east" || row.side === "west") {
-          surfacePaths.push({ x, z: 0, w: ROOM_DEPTH, d: roomW, side: row.side });
-        }
-      }
+    if (entrance) {
+      const roomW = entrance.w;
+      const entranceZ = boxes.find((b) => b.room.id === entrance.room.id)?.z ?? 0;
+      const topEnd = -targetSideSpan / 2;
+      const botEnd = targetSideSpan / 2;
+      const upperL = entranceZ - roomW / 2 - topEnd;
+      const lowerL = botEnd - (entranceZ + roomW / 2);
+      if (upperL > 0.2)
+        blocks.push({
+          x: westOuterX,
+          z: topEnd + upperL / 2,
+          w: ROOM_DEPTH,
+          d: upperL,
+        });
+      if (lowerL > 0.2)
+        blocks.push({
+          x: westOuterX,
+          z: botEnd - lowerL / 2,
+          w: ROOM_DEPTH,
+          d: lowerL,
+        });
+      surfacePaths.push({
+        x: westOuterX,
+        z: entranceZ,
+        w: ROOM_DEPTH,
+        d: roomW,
+        side: "west",
+      });
     }
   }
+
+
 
   return {
     boxes,

@@ -3,17 +3,28 @@ import { Box, Maximize, Minimize, RotateCcw, Tag } from "lucide-react";
 import { FLOORS, floorById } from "@/lib/bunker/floors";
 import { roomById } from "@/lib/bunker/rooms";
 import { systemById } from "@/lib/bunker/systems";
+import { assignPeople } from "@/lib/bunker/people";
+import type { ScenarioId } from "@/lib/bunker/types";
 
 const Floor3DCanvas = lazy(() => import("./Floor3DCanvas"));
 
 interface Props {
   floorId: number;
   selectedRoom: string | null;
+  scenario: ScenarioId;
+  population: number;
   onSelectFloor: (id: number) => void;
   onSelectRoom: (id: string | null) => void;
 }
 
-export function Floor3DView({ floorId, selectedRoom, onSelectFloor, onSelectRoom }: Props) {
+export function Floor3DView({
+  floorId,
+  selectedRoom,
+  scenario,
+  population,
+  onSelectFloor,
+  onSelectRoom,
+}: Props) {
   const wrap = useRef<HTMLDivElement | null>(null);
   const [hydrated, setHydrated] = useState(false);
   const [resetKey, setResetKey] = useState(0);
@@ -40,6 +51,10 @@ export function Floor3DView({ floorId, selectedRoom, onSelectFloor, onSelectRoom
     else void el.requestFullscreen?.();
   }, []);
 
+  const assignments = assignPeople(scenario, population);
+  const here = assignments.filter((p) => p.floor === floorId).length;
+  const elsewhere = assignments.length - here;
+
   const floor = floorById(floorId);
   const room = selectedRoom ? roomById(selectedRoom) : undefined;
   const roomOnFloor = room && room.floor === floorId ? room : undefined;
@@ -60,6 +75,9 @@ export function Floor3DView({ floorId, selectedRoom, onSelectFloor, onSelectRoom
           </p>
           <p className="font-mono text-[11px] uppercase tracking-[0.16em] text-primary">
             {floor.code} · {floor.name}
+          </p>
+          <p className="mt-0.5 font-mono text-[9px] uppercase tracking-[0.16em] text-muted-foreground">
+            {here} resident{here === 1 ? "" : "s"} here · {elsewhere} elsewhere
           </p>
         </div>
         <div className="pointer-events-auto flex flex-wrap gap-1.5">
@@ -132,6 +150,8 @@ export function Floor3DView({ floorId, selectedRoom, onSelectFloor, onSelectRoom
             selectedRoom={selectedRoom}
             showLabels={labels}
             resetKey={resetKey}
+            scenario={scenario}
+            population={population}
             onSelectRoom={onSelectRoom}
           />
         </Suspense>
