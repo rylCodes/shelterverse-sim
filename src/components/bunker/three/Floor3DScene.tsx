@@ -6,15 +6,26 @@ import { floorLayout, PALETTE_3D, SYSTEM_HEX } from "@/lib/bunker/layout3d";
 import { floorById } from "@/lib/bunker/floors";
 import { Room3D, FloorMaterials } from "./Room3D";
 import { UNIT_BOX } from "./Fixtures3D";
+import { People3D } from "./People3D";
+import type { ScenarioId } from "@/lib/bunker/types";
 
 interface Props {
   floorId: number;
   selectedRoom: string | null;
   showLabels: boolean;
+  scenario: ScenarioId;
+  population: number;
   onSelectRoom: (id: string | null) => void;
 }
 
-export function Floor3DScene({ floorId, selectedRoom, showLabels, onSelectRoom }: Props) {
+export function Floor3DScene({
+  floorId,
+  selectedRoom,
+  showLabels,
+  scenario,
+  population,
+  onSelectRoom,
+}: Props) {
   const layout = useMemo(() => floorLayout(floorId), [floorId]);
   const floor = floorById(floorId);
   const accent = SYSTEM_HEX[floor.accent];
@@ -412,6 +423,9 @@ export function Floor3DScene({ floorId, selectedRoom, showLabels, onSelectRoom }
           onHover={setHovered}
         />
       ))}
+
+      {/* Residents, placed by the same disaster rules as the 2D section */}
+      <People3D layout={layout} floorId={floorId} scenario={scenario} population={population} />
 
       {/* Solid Blocks matching height of rooms (Floor 1 Specific) */}
       {layout.blocks &&
