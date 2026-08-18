@@ -144,6 +144,8 @@ function Index() {
                 />
               ) : (
                 <Floor3DView
+                  scenario={state.scenario}
+                  population={state.population}
                   floorId={state.selectedFloor ?? 1}
                   selectedRoom={state.selectedRoom}
                   onSelectFloor={(floor) => dispatch({ type: "selectFloor", floor })}

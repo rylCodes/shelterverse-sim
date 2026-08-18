@@ -12,31 +12,58 @@ export interface Person {
   child: boolean;
 }
 
+/** Coordinate-free assignment shared by the 2D section and the 3D explore mode. */
+export interface PersonAssignment {
+  id: number;
+  floor: number;
+  roomId: string;
+  child: boolean;
+  delay: number;
+  /** Seeded 0..1 offsets used to spread people inside their room. */
+  spread: { u: number; v: number };
+}
+
 const rand = (seed: number) => {
   const x = Math.sin(seed * 9301 + 49297) * 233280;
   return x - Math.floor(x);
 };
 
-/** Distribute residents across the floors that are active for this scenario. */
-export function peopleFor(scenario: ScenarioId, population: number): Person[] {
+/**
+ * Assign each resident to a floor and room using the active scenario's safe floors.
+ * Pure and deterministic — the same input always yields the same placement.
+ */
+export function assignPeople(scenario: ScenarioId, population: number): PersonAssignment[] {
   const sc = scenarioById(scenario);
   const floors = sc.safeFloors;
-  const people: Person[] = [];
+  const out: PersonAssignment[] = [];
   for (let i = 0; i < population; i++) {
     const floor = floors[i % floors.length]!;
     const rooms = roomsByFloor(floor);
     const room = rooms[Math.floor(rand(i * 3 + floor) * rooms.length)]!;
-
-    const rect = roomRect(room.id);
-    const x = rect.x + 8 + rand(i * 7 + floor) * Math.max(6, rect.w - 16);
-    people.push({
+    out.push({
       id: i,
-      x: Math.round(x * 100) / 100,
-      y: floorY(floor) + FLOOR_H - 16,
       floor,
-      delay: Math.round(rand(i * 11) * 400) / 100,
+      roomId: room.id,
       child: i % 5 === 3,
+      delay: Math.round(rand(i * 11) * 400) / 100,
+      spread: { u: rand(i * 7 + floor), v: rand(i * 13 + floor) },
     });
   }
-  return people;
+  return out;
+}
+
+/** Distribute residents across the floors that are active for this scenario (2D coordinates). */
+export function peopleFor(scenario: ScenarioId, population: number): Person[] {
+  return assignPeople(scenario, population).map((p) => {
+    const rect = roomRect(p.roomId);
+    const x = rect.x + 8 + p.spread.u * Math.max(6, rect.w - 16);
+    return {
+      id: p.id,
+      x: Math.round(x * 100) / 100,
+      y: floorY(p.floor) + FLOOR_H - 16,
+      floor: p.floor,
+      delay: p.delay,
+      child: p.child,
+    };
+  });
 }

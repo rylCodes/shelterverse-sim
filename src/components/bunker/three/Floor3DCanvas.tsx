@@ -5,12 +5,15 @@ import { EffectComposer, N8AO, Bloom, Vignette } from "@react-three/postprocessi
 import type { OrbitControls as OrbitControlsImpl } from "three-stdlib";
 import { floorLayout, PALETTE_3D } from "@/lib/bunker/layout3d";
 import { Floor3DScene } from "./Floor3DScene";
+import type { ScenarioId } from "@/lib/bunker/types";
 
 interface Props {
   floorId: number;
   selectedRoom: string | null;
   showLabels: boolean;
   resetKey: number;
+  scenario: ScenarioId;
+  population: number;
   onSelectRoom: (id: string | null) => void;
 }
 
@@ -45,6 +48,8 @@ export default function Floor3DCanvas({
   selectedRoom,
   showLabels,
   resetKey,
+  scenario,
+  population,
   onSelectRoom,
 }: Props) {
   return (
@@ -81,6 +86,8 @@ export default function Floor3DCanvas({
         floorId={floorId}
         selectedRoom={selectedRoom}
         showLabels={showLabels}
+        scenario={scenario}
+        population={population}
         onSelectRoom={onSelectRoom}
       />
 
