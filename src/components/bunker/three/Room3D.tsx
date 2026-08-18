@@ -51,7 +51,7 @@ export function Room3D({
   onSelect,
   onHover,
 }: Props) {
-  const { w, d, doorOffset = 0, wideEntrance = false, openBack = false } = box;
+  const { w, d, doorOffset = 0, wideDoor = false, openBack = false } = box;
 
   const wallMat = selected
     ? materials.wallSelected
@@ -61,9 +61,9 @@ export function Room3D({
         ? materials.wallDim
         : materials.wall;
 
-  const doorW = wideEntrance
-    ? Math.min(w - 0.3, w * 0.4) // 40%-wide opening
-    : Math.min(1.3, w * 0.4);
+  const doorRatio = typeof wideDoor === "number" ? wideDoor : wideDoor ? 0.4 : 0;
+  const doorW = doorRatio > 0 ? Math.min(w - 0.3, w * doorRatio) : Math.min(1.3, w * 0.4);
+
   const maxOffset = w / 2 - doorW / 2 - 0.1;
   const safeOffset = Math.max(-maxOffset, Math.min(maxOffset, doorOffset));
 
