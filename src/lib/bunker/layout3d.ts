@@ -9,7 +9,7 @@ export interface RoomBox {
   d: number;
   side: "north" | "south" | "east" | "west";
   doorOffset?: number;
-  wideEntrance?: boolean;
+  wideDoor?: boolean | number;
   openBack?: boolean;
 }
 
@@ -29,7 +29,7 @@ export interface FloorLayout {
 
 interface Row {
   side: "north" | "south" | "east" | "west";
-  items: { room: RoomDef; w: number }[];
+  items: { room: RoomDef; w: number; wideDoor?: boolean | number }[];
   total: number;
 }
 
@@ -66,8 +66,15 @@ export function floorLayout(floorId: number): FloorLayout {
     }
     // Check-in belongs to the entry sequence, right beside the decon bays
     if (floorId === 1 && /reception|check-in/i.test(room.name)) {
-      north.items.unshift({ room, w: Math.max(4.2, w) });
-      north.total += Math.max(4.2, w) + GAP;
+      const receptionW = Math.max(4.2, w);
+
+      north.items.unshift({
+        room,
+        w: receptionW,
+        wideDoor: 0.85,
+      });
+
+      north.total += receptionW + GAP;
       continue;
     }
     // Move equipment storage explicitly to the south row for Floor 1
@@ -188,7 +195,16 @@ export function floorLayout(floorId: number): FloorLayout {
         doorOffset = clamped - center;
       }
 
-      boxes.push({ room: item.room, x, z, w, d: ROOM_DEPTH, side: row.side, doorOffset });
+      boxes.push({
+        room: item.room,
+        x,
+        z,
+        w,
+        d: ROOM_DEPTH,
+        side: row.side,
+        doorOffset,
+        ...(item.wideDoor ? { wideDoor: item.wideDoor } : {}),
+      });
     }
   };
 
@@ -214,7 +230,7 @@ export function floorLayout(floorId: number): FloorLayout {
       d: ROOM_DEPTH,
       side: "west",
       doorOffset: 0,
-      wideEntrance: true,
+      wideDoor: true,
     });
   }
 

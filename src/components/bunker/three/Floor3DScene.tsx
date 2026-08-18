@@ -179,15 +179,71 @@ export function Floor3DScene({
         scale={[width, wallHeight, 0.3]}
         raycast={() => null}
       />
-      <mesh
-        castShadow
-        receiveShadow
-        geometry={UNIT_BOX}
-        material={materials.core}
-        position={[-width / 2 + 0.15, wallHeight / 2, 0]}
-        scale={[0.3, wallHeight, depth]}
-        raycast={() => null}
-      />
+      {/* West Outer Shell Wall */}
+      {floorId === 1 && layout.surfacePaths.some((p) => p.side === "west") ? (
+        <>
+          {(() => {
+            const westPath = layout.surfacePaths.find((p) => p.side === "west");
+
+            if (!westPath) return null;
+
+            const wallX = -width / 2 + 0.15;
+            const openingCenterZ = westPath.z;
+            const openingWidth = westPath.d;
+
+            const topLength = depth / 2 - (openingCenterZ + openingWidth / 2);
+            const bottomLength = depth / 2 + (openingCenterZ - openingWidth / 2);
+
+            return (
+              <>
+                {/* North section */}
+                {topLength > 0 && (
+                  <mesh
+                    castShadow
+                    receiveShadow
+                    geometry={UNIT_BOX}
+                    material={materials.core}
+                    position={[
+                      wallX,
+                      wallHeight / 2,
+                      openingCenterZ + openingWidth / 2 + topLength / 2,
+                    ]}
+                    scale={[0.3, wallHeight, topLength]}
+                    raycast={() => null}
+                  />
+                )}
+
+                {/* South section */}
+                {bottomLength > 0 && (
+                  <mesh
+                    castShadow
+                    receiveShadow
+                    geometry={UNIT_BOX}
+                    material={materials.core}
+                    position={[
+                      wallX,
+                      wallHeight / 2,
+                      openingCenterZ - openingWidth / 2 - bottomLength / 2,
+                    ]}
+                    scale={[0.3, wallHeight, bottomLength]}
+                    raycast={() => null}
+                  />
+                )}
+              </>
+            );
+          })()}
+        </>
+      ) : (
+        <mesh
+          castShadow
+          receiveShadow
+          geometry={UNIT_BOX}
+          material={materials.core}
+          position={[-width / 2 + 0.15, wallHeight / 2, 0]}
+          scale={[0.3, wallHeight, depth]}
+          raycast={() => null}
+        />
+      )}
       <mesh
         castShadow
         receiveShadow
