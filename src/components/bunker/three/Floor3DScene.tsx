@@ -425,12 +425,7 @@ export function Floor3DScene({
       ))}
 
       {/* Residents, placed by the same disaster rules as the 2D section */}
-      <People3D
-        layout={layout}
-        floorId={floorId}
-        scenario={scenario}
-        population={population}
-      />
+      <People3D layout={layout} floorId={floorId} scenario={scenario} population={population} />
 
       {/* Solid Blocks matching height of rooms (Floor 1 Specific) */}
       {layout.blocks &&

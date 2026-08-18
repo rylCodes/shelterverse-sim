@@ -9,6 +9,8 @@ export interface RoomBox {
   d: number;
   side: "north" | "south" | "east" | "west";
   doorOffset?: number;
+  wideEntrance?: boolean;
+  openBack?: boolean;
 }
 
 export interface FloorLayout {
@@ -50,7 +52,7 @@ export function floorLayout(floorId: number): FloorLayout {
 
   // Distribute rooms cleanly across rows
   for (const room of rooms) {
-    let w = Math.max(2.2, room.span * 2.9); // Note: changed 'const w' to 'let w'
+    let w = Math.max(2.2, room.span * 2.9);
 
     if (floorId === 1 && /entrance|main door/i.test(room.name)) {
       w = Math.max(7.5, w); // Force Main Entrance to be massive
@@ -64,7 +66,8 @@ export function floorLayout(floorId: number): FloorLayout {
     }
     // Check-in belongs to the entry sequence, right beside the decon bays
     if (floorId === 1 && /reception|check-in/i.test(room.name)) {
-      west.items.push({ room, w: Math.max(4.2, w) });
+      north.items.unshift({ room, w: Math.max(4.2, w) });
+      north.total += Math.max(4.2, w) + GAP;
       continue;
     }
     // Move equipment storage explicitly to the south row for Floor 1
@@ -91,7 +94,6 @@ export function floorLayout(floorId: number): FloorLayout {
     sorted[0]?.items.push({ room, w });
     sorted[0] && (sorted[0].total += w + GAP);
   }
-
 
   // Recalculate true totals
   for (const row of [north, south, east, west]) {
@@ -135,10 +137,10 @@ export function floorLayout(floorId: number): FloorLayout {
   }
 
   const entryBand = westOuter.items.length > 0 ? ROOM_DEPTH + GAP : 0;
-  // Keep the slab symmetric around the origin even with the extra entry band
-  const width = outerLoopW + 2 * ROOM_DEPTH + 2 * entryBand;
-  const depth = outerLoopD + 2 * ROOM_DEPTH;
 
+  // Standard building slab width centered at X = 0
+  const width = outerLoopW + 2 * ROOM_DEPTH;
+  const depth = outerLoopD + 2 * ROOM_DEPTH;
 
   const boxes: RoomBox[] = [];
 
@@ -195,18 +197,15 @@ export function floorLayout(floorId: number): FloorLayout {
   processRow(east);
   processRow(west);
 
-  // Floor 1: Main Entrance sits in an outer band, in front of the decon bays
+  // Floor 1: Main Entrance sits in an outer band, projecting beyond decon bays on the West
   const westOuterX = -outerLoopW / 2 - ROOM_DEPTH / 2 - entryBand;
   const entrance = westOuter.items[0];
   if (entrance) {
     const deconBoxes = boxes.filter(
       (b) => b.side === "west" && /decontamination/i.test(b.room.name),
     );
-    // Aim the entrance door at the seam between Decon A and Decon B
     const targetZ =
-      deconBoxes.length > 0
-        ? deconBoxes.reduce((sum, b) => sum + b.z, 0) / deconBoxes.length
-        : 0;
+      deconBoxes.length > 0 ? deconBoxes.reduce((sum, b) => sum + b.z, 0) / deconBoxes.length : 0;
     boxes.push({
       room: entrance.room,
       x: westOuterX,
@@ -215,7 +214,14 @@ export function floorLayout(floorId: number): FloorLayout {
       d: ROOM_DEPTH,
       side: "west",
       doorOffset: 0,
+      wideEntrance: true,
     });
+  }
+
+  if (floorId === 1) {
+    boxes
+      .filter((b) => b.room.id === "f1-decon-a" || b.room.id === "f1-decon-b")
+      .forEach((b) => (b.openBack = true));
   }
 
   // Generate Solid Blocks & Surface Paths for Floor 1 East/West gaps
@@ -266,8 +272,6 @@ export function floorLayout(floorId: number): FloorLayout {
       });
     }
   }
-
-
 
   return {
     boxes,

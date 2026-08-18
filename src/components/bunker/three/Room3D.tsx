@@ -51,7 +51,7 @@ export function Room3D({
   onSelect,
   onHover,
 }: Props) {
-  const { w, d, doorOffset = 0 } = box;
+  const { w, d, doorOffset = 0, wideEntrance = false, openBack = false } = box;
 
   const wallMat = selected
     ? materials.wallSelected
@@ -61,7 +61,9 @@ export function Room3D({
         ? materials.wallDim
         : materials.wall;
 
-  const doorW = Math.min(1.3, w * 0.4);
+  const doorW = wideEntrance
+    ? Math.min(w - 0.3, w * 0.4) // 40%-wide opening
+    : Math.min(1.3, w * 0.4);
   const maxOffset = w / 2 - doorW / 2 - 0.1;
   const safeOffset = Math.max(-maxOffset, Math.min(maxOffset, doorOffset));
 
@@ -80,15 +82,24 @@ export function Room3D({
           : -Math.PI / 2;
 
   const walls = useMemo(() => {
-    return [
-      { pos: [0, height / 2, d / 2], scale: [w, height, T] },
-      { pos: [-w / 2, height / 2, 0], scale: [T, height, d] },
-      { pos: [w / 2, height / 2, 0], scale: [T, height, d] },
+    const result: { pos: [number, number, number]; scale: [number, number, number] }[] = [
+      // front wall with door gap (corridor side)
       { pos: [leftCenter, height / 2, -d / 2], scale: [leftW, height, T] },
       { pos: [rightCenter, height / 2, -d / 2], scale: [rightW, height, T] },
       { pos: [safeOffset, height - 0.25, -d / 2], scale: [doorW, 0.5, T] },
-    ] as const;
-  }, [w, d, height, leftCenter, leftW, rightCenter, rightW, safeOffset, doorW]);
+      // side walls
+      { pos: [-w / 2, height / 2, 0], scale: [T, height, d] },
+      { pos: [w / 2, height / 2, 0], scale: [T, height, d] },
+    ];
+
+    if (!openBack) {
+      // normal solid back wall
+      result.push({ pos: [0, height / 2, d / 2], scale: [w, height, T] });
+    }
+    // openBack = no wall pushed → open passage to adjacent room
+
+    return result;
+  }, [w, d, height, leftCenter, leftW, rightCenter, rightW, safeOffset, doorW, openBack]);
 
   // Adding architectural trims for realistic AO catching
   const trims = useMemo(() => {
