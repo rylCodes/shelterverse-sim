@@ -39,7 +39,13 @@ export function assignPeople(scenario: ScenarioId, population: number): PersonAs
   for (let i = 0; i < population; i++) {
     const floor = floors[i % floors.length]!;
     const rooms = roomsByFloor(floor);
-    const room = rooms[Math.floor(rand(i * 3 + floor) * rooms.length)]!;
+    let room = rooms[Math.floor(rand(i * 3 + floor) * rooms.length)]!;
+
+    // Reposition anyone assigned to Emergency Exit on Floor 1 to Reception/Check-in
+    if (room.id === "f1-exit") {
+      room = rooms.find((r) => r.id === "f1-reception") || rooms[0]!;
+    }
+
     out.push({
       id: i,
       floor,
